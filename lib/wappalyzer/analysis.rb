@@ -90,7 +90,7 @@ module Wappalyzer
         items.push(many_to_many(tech, data, 'cookies'))
         items.push(many_to_many(tech, data, 'meta'))
         items.push(many_to_many(tech, data, 'headers'))
-        items.push(many_to_many(tech, data[tech['name']], 'js'))
+        items.push(many_to_many(tech, data['js'][tech['name']], 'js'))
       end
       items.flatten.compact
     end
@@ -131,7 +131,8 @@ module Wappalyzer
 
     def add_tech_if_regex_match(field, pattern, tech, value, key = nil)
       regex = Regexp.new(pattern['regex'], Regexp::IGNORECASE)
-      return unless value && value =~ regex
+      return unless value
+      return if value != true && value !~ regex
 
       {
         'key' => key,
@@ -162,7 +163,8 @@ module Wappalyzer
           items[name][key] = value
         end
       end
-      items
+
+      items.map { |k, v| [k, { 'js' => v.map { |a, b| [a, [b]] }.to_h }] }.to_h
     end
 
     private
@@ -236,7 +238,7 @@ module Wappalyzer
         confidence = info['raw'].map { |r| r['pattern']['confidence'].to_i }.sum
         versions = info['raw'].map { |r| r['version'] }.reject { |a| a.nil? || a.empty? }
         info['raw'] = info['raw'].map { |a| a.except('pattern').merge(a['pattern']).merge('version' => a['version'] || '') }
-        [id, info.except('tech').merge('confidence' => confidence, 'versions' => versions)]
+        [id, info.merge('confidence' => confidence, 'versions' => versions)]
       end.to_h
 
       data.map do |_id, info|
