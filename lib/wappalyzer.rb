@@ -5,7 +5,15 @@ require 'httparty'
 require 'active_support/core_ext/string/inflections'
 
 require 'wappalyzer/version'
+
+require 'wappalyzer/builder/rule_parser'
 require 'wappalyzer/builder'
+
+require 'wappalyzer/analysis/webpage_scraper'
+require 'wappalyzer/analysis/processor'
+require 'wappalyzer/analysis/formatter'
+require 'wappalyzer/analysis/post_formatter'
+require 'wappalyzer/analysis/implication_resolver'
 require 'wappalyzer/analysis'
 
 module Wappalyzer
