@@ -210,10 +210,9 @@ module Wappalyzer
       data.each do |name, info|
         (info['tech']['implies'] || []).each do |imp|
           raw = {
-            'field' => 'implied',
             'key' => name,
-            'pattern' => { 'confidence' => imp['confidence'],
-                           'version' => '' }
+            'field' => 'implied',
+            'pattern' => { 'confidence' => imp['confidence'], 'version' => '' }
           }
           if data[imp['value']] && data[imp['value']]['raw']
             data[imp['value']]['raw'].push(raw)
@@ -228,6 +227,14 @@ module Wappalyzer
             }
           end
         end
+        (info['tech']['excludes'] || []).each do |imp|
+          raw = {
+            'key' => name,
+            'field' => 'excluded',
+            'pattern' => { 'confidence' => -imp['confidence'], 'version' => '' }
+          }
+          data[imp['value']]['raw'].push(raw) if data[imp['value']] && data[imp['value']]['raw']
+        end
       end
 
       data.merge(implies)
@@ -235,17 +242,51 @@ module Wappalyzer
 
     def post_sanitize_detected_data(data)
       data = data.map do |id, info|
-        confidence = info['raw'].map { |r| r['pattern']['confidence'].to_i }.sum
+        confidence = info['raw'].map { |r| r['field'] == 'implied' || r['field'] == 'excluded' ? 0 : r['pattern']['confidence'].to_i }
+        zero_confidence = info['raw'].map { |r| r['pattern']['confidence'] }.count(&:zero?)
+        posi_confidence = info['raw'].map { |r| r['pattern']['confidence'] }.count { |c| c >= 0 }
+        confidence += [25] * zero_confidence if zero_confidence.positive? && zero_confidence < posi_confidence
+        confidence = confidence.sum
+
         versions = info['raw'].map { |r| r['version'] }.reject { |a| a.nil? || a.empty? }
         info['raw'] = info['raw'].map { |a| a.except('pattern').merge(a['pattern']).merge('version' => a['version'] || '') }
-        [id, info.merge('confidence' => confidence, 'versions' => versions)]
+        [id, info.merge('confidence' => confidence, 'versions' => versions, 'best_version' => best_version_for(info['raw']))]
       end.to_h
 
       data.map do |_id, info|
         implied = info['raw'].detect { |i| i['field'] == 'implied' }
-        info['confidence'] = (info['confidence'] * data[implied['key']]['confidence'] / 100.0).to_i if implied
-        info
-      end.sort_by { |info| info['confidence'] / (info['implied'] ? 1.5 : 1) }.reverse
+        info['confidence'] += (implied['confidence'] * data[implied['key']]['confidence'] / 100.0).to_i if implied
+        if (excluded = info['raw'].detect { |i| i['field'] == 'excluded' }) && data[excluded['key']]
+          info['confidence'] += (excluded['confidence'] * data[excluded['key']]['confidence'] / 100.0).to_i
+        end
+        info # if info['confidence'].positive?
+      end.compact.sort_by { |info| info['confidence'] / (info['implied'] ? 1.5 : 1) }.reverse
+    end
+
+    def best_version_for(raw, field: nil)
+      grouped = raw.group_by { |a| a['version'] }
+      by_conf = grouped.map { |k, v| [k, v.map { |a| a['confidence'] }.inject(0, :+)] }.to_h
+      return if by_conf.empty?
+
+      max_v = by_conf.values.max
+      maxed = by_conf.select { |_k, v| v == max_v }
+      return maxed.keys.first if maxed.count == 1
+
+      by_count = grouped.map { |k, v| [k, v.count] }.to_h
+      max_c = by_count.values.max
+      maxed = by_count.select { |_k, v| v == max_c }
+      return maxed.keys.first if maxed.count == 1
+
+      unless field
+        %w[js scripts].each do |f|
+          specific = raw.select { |a| a['field'] == f && !a['version'].empty? }
+          version = best_version_for(specific, field: f)
+          return version if version
+        end
+      end
+
+      version = raw.detect { |k| !k['version'].empty? }
+      version ? version['version'] : nil
     end
 
     def group_arr(arr, downcase: true)

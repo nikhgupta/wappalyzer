@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    wappalyzer (0.1.1)
+    wappalyzer (0.1.2)
 
 GEM
   remote: https://rubygems.org/
