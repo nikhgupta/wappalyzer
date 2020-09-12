@@ -10,6 +10,7 @@ module Wappalyzer
     end
 
     def initialize(cache: nil, refresh: false)
+      @data = nil
       @cache = cache
       @refresh = refresh
       read_techs unless @refresh
@@ -35,7 +36,7 @@ module Wappalyzer
 
     def pipe_in(name, *args, **options)
       klass = Wappalyzer::Analysis.const_get(name)
-      args.push(@data) if @data
+      args.push(@data) if args.empty?
       args.push(@techs)
       @data = klass.call(*args, **options)
     end
