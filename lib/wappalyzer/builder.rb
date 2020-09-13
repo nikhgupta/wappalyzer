@@ -72,8 +72,14 @@ module Wappalyzer
         website: data['website'],
         description: data['description'],
         icon: data['icon'] || 'default.svg',
-        categories: @categories.values_at(*data['cats'])
+        categories: parse_categories(data['cats'])
       )
+    end
+
+    def parse_categories(cats)
+      return cats unless cats.any? { |c| c.is_a?(Integer) }
+
+      @categories.values_at(*cats)
     end
   end
 end
