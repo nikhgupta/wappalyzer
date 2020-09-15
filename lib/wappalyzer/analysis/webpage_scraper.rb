@@ -124,7 +124,7 @@ module Wappalyzer
       end
 
       def sanitize_value(value)
-        value.is_a?(String) || value.is_a?(Numeric) ? value : !!value
+        value.is_a?(String) || value.is_a?(Numeric) ? value : !value.nil?
       end
 
       def format_js_data_arr_for_processing(items)
