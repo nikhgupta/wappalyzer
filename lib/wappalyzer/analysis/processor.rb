@@ -76,6 +76,7 @@ module Wappalyzer
 
       def version_for(pattern, value)
         return if pattern['version'].to_s.strip.empty?
+        return if value == true
 
         matches = Regexp.new(pattern['regex'], Regexp::IGNORECASE).match(value)
         return unless matches
