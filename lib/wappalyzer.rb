@@ -2,6 +2,7 @@ require 'pry'
 require 'json'
 require 'ferrum'
 require 'httparty'
+require 'nokogiri'
 require 'active_support/core_ext/string/inflections'
 
 require 'wappalyzer/version'

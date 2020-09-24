@@ -25,6 +25,7 @@ module Wappalyzer
         @page = page
         @techs = techs
         @uri = URI(url)
+        @html = nil
       end
 
       def process
@@ -44,9 +45,13 @@ module Wappalyzer
       protected
 
       def extract_meta_tags
-        meta = @page.css('meta').map do |m|
-          [m.attribute('name') || m.attribute('property'), m.attribute('content')]
+        meta = safe_extract do |node|
+          node.css('meta').map do |_m|
+            name = fetch_attribute(node, 'name') || fetch_attribute(node, 'property')
+            [name, fetch_attribute(node, 'content')]
+          end
         end
+
         group_arr meta
       end
 
@@ -57,7 +62,9 @@ module Wappalyzer
       end
 
       def extract_scripts
-        @page.css('script').map { |m| m.attribute('src') }.compact
+        safe_extract do |node|
+          node.css('script').map { |m| fetch_attribute(m, 'src') }.compact
+        end
       end
 
       def extract_cookies
@@ -77,6 +84,16 @@ module Wappalyzer
         end
 
         format_js_data_arr_for_processing items
+      end
+
+      def html
+        @html ||= Nokogiri::HTML(@data['html'])
+      end
+
+      def safe_extract
+        yield(@page)
+      rescue StandardError
+        yield(html)
       end
 
       def fetch_page(inverted: false)
@@ -101,6 +118,11 @@ module Wappalyzer
       end
 
       private
+
+      def fetch_attribute(node, name)
+        method = node.is_a?(Nokogiri::HTML::Document) ? :attr : :attribute
+        node.send(method, name).to_s
+      end
 
       def group_arr(arr, downcase: true)
         arr.group_by(&:first).map do |val|
