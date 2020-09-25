@@ -39,6 +39,7 @@ module Wappalyzer
         @data['scripts'] = extract_scripts
         @data['cookies'] = extract_cookies
         @data['js'] = extract_js_variables
+
         @data
       end
 
@@ -46,10 +47,11 @@ module Wappalyzer
 
       def extract_meta_tags
         meta = safe_extract do |node|
-          node.css('meta').map do |_m|
-            name = fetch_attribute(node, 'name') || fetch_attribute(node, 'property')
-            [name, fetch_attribute(node, 'content')]
-          end
+          node.css('meta').map do |m|
+            name = fetch_attribute(m, 'name') || fetch_attribute(m, 'property')
+            value = fetch_attribute(m, 'content')
+            [name, value] unless value.empty?
+          end.compact
         end
 
         group_arr meta
@@ -63,7 +65,7 @@ module Wappalyzer
 
       def extract_scripts
         safe_extract do |node|
-          node.css('script').map { |m| fetch_attribute(m, 'src') }.compact
+          node.css('script').map { |m| fetch_attribute(m, 'src') }.reject(&:empty?)
         end
       end
 
